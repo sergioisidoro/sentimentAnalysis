@@ -2,9 +2,7 @@ import re
 import csv
 import time
 from random import sample
-
-start_time = time.time()
-
+import matplotlib.pyplot as plt
 
 ################################
 ######### OPEN STUFF ###########
@@ -69,7 +67,6 @@ pattern = re.compile(pattern)
 # comment 2nd method and uncomment 1st to rerun comparison. (expect times around 500s)
 print 'extract features'
 #features = [re.findall(pattern, article) for article in content]
-#add line to save features
 with open('features.csv', 'Ur') as f:
     features = list(rec for rec in csv.reader(f, delimiter=','))
 
@@ -77,15 +74,15 @@ with open('features.csv', 'Ur') as f:
 ################################
 #### MAKE TRAINING/TEST SET ####
 ################################
-n_tests = 20
+n_tests = 50
 population = range(0,len(features))
 indexes = sample(population, n_tests)
+
 
 ################################
 ###### COMPUTE DISTANCES #######
 ################################
 # measure the distance between the test lists and the training ones, with the KNN classifier 
-#TODO: (search for a knn library in python)
 print 'calculating distance for test set'
 big = [99999999999, 9999]
 #k nearest neighbours
@@ -95,7 +92,7 @@ for i in indexes:
 	test_distance = [big]*k
 	test_feat = features[i]
 	for feat_list in features:
-		if len(feat_list) > len(test_feat)/3 and features.index(feat_list) not in indexes:
+		if len(feat_list) > len(test_feat)/5 and features.index(feat_list) not in indexes:
 			temp_test_feat = [word for word in test_feat]
 			[[feat_list.remove(word), temp_test_feat.remove(word)] for word in feat_list if word in temp_test_feat]
 			distance = [len(temp_test_feat) + len(feat_list), features.index(feat_list)]
@@ -104,6 +101,8 @@ for i in indexes:
 				test_distance.append(distance)
 	indexes_dist.append(test_distance)
 
+
+
 ################################
 ####### PREDICT RESULT #########
 ################################
@@ -111,8 +110,10 @@ for i in indexes:
 print 'Averaging neighbours ratios'
 dist_sums = []
 for index in indexes_dist:
+
 	ratio_list = [(float(everything[x[1]][0])+1.0)/(float(everything[x[1]][1])+1.0) for x in index]
 	dist_sums.append(sum(ratio_list)/k)
+
 
 ################################
 ####### GET DIFFERENCES ########
@@ -122,31 +123,36 @@ print "Comparing predition with real results"
 print "predition vs real"
 
 real_results = [(float(everything[x][0]) + 1.0)/(float(everything[x][1]) + 1.0) for x in indexes]
-print "teste"
-print type(real_results[0])
-print type(dist_sums[0])
+
 avg_sum = 0
 for x in range(0, len(dist_sums)):
 	print"{0:.2f}".format(real_results[x]) + " vs " + "{0:.2f}".format(dist_sums[x])
 	avg_sum = avg_sum + abs(real_results[x] - dist_sums[x])
 
 print avg_sum/len(dist_sums)
-error_margin = 1.0
-precision = 0
 
-print time.time() - start_time, "seconds"
+################################
+###### PLOTTING RESULTS ########
+################################
 
-# steem
-# - WordNet stemmer
-# - Porter stemmer
+x = range(0, len(dist_sums))
+y1 = real_results
+y2 = dist_sums
+fig, ax = plt.subplots()
+ax.plot(x, y1, 'k--')
+ax.plot(x, y2, 'ro')
 
-# tokens
-# - up and down votes
-# - smiles
-# - exclamations, interrogations, etc
-# - remove non alphabetic chars (concatenate don't to dont)
-# - long words ("gooood")
-# - capitalization
-# - negations 
-# - swear words
-# - lexicon words (good and bad)
+# set ticks and tick labels
+ax.set_xlim((0, len(dist_sums)+5))
+ax.set_xticks(range(0, len(dist_sums)+1, 5))
+
+# Only draw spine between the y-ticks
+ax.spines['left'].set_bounds(-1, 1)
+# Hide the right and top spines
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+# Only show ticks on the left and bottom spines
+ax.yaxis.set_ticks_position('left')
+ax.xaxis.set_ticks_position('bottom')
+
+plt.show()
